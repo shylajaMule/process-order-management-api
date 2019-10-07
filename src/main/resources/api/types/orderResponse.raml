@@ -1,0 +1,46 @@
+#%RAML 1.0 DataType
+
+type: object
+properties:
+      orderId:
+        description: Order Id
+        example: 1
+        type: number
+        format: int
+      placementDate:
+        description: order date
+        example: 2019-10-03
+        type: date-only
+      customerName:
+        description: Name of the customer
+        example: john john
+        type: string
+      orderItems:
+        type: array
+        items:
+          type: object
+          properties:
+            orderItemId:
+              description: Order Item Id in ERP
+              example: 1
+              type: number
+              format: int
+            itemId:
+              description: Product Id
+              example: 1
+              type: number
+              format: int
+            itemCount:
+              description: quantity ordered
+              example: 1
+              type: number
+              format: int
+            itemName:
+              description: Item Name
+              example: productA
+              type: string
+            iItemCost:
+              description: cost of each item
+              example: 100
+              type: number
+              format: double

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	
+	
+	<flow name="get-order-by-uriparam-flow" doc:id="07a6945e-4d0f-40b3-bcdf-acdaed838b9f" >
+		<set-variable value="#[attributes.headers]" doc:name="headers" doc:id="fbbdd184-a2d3-4570-b6c5-2e8ce69323a0" variableName="headers"/>
+		<set-variable value="#[attributes.uriParams.orderId]" doc:name="orderId" doc:id="099d1bc4-690b-484a-9b7b-87029fd67999" variableName="orderId"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ae413ebb-a550-4ea9-8f1a-8a3985a868c3" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+		<http:request method="GET" doc:name="GET order system api" doc:id="7dafa038-4782-48a5-a8e1-e7933b075b79" config-ref="HTTP_Order_SystemApi_Request_configuration" path="/${secure::systemApi.order.http.path}/{orderId}">
+			<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	'X-correlation-id' : vars.headers.'X-correlation-id',
+	'X-session-id' : vars.headers.'X-session-id',
+	clientId : vars.headers.clientId,
+	clientSecretKey : vars.headers.clientSecretKey
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	orderId : attributes.uriParams.'orderId'
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="9a8fc74e-cc3e-4c72-9076-39558d7c83a9" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+		<set-variable value="#[payload]" doc:name="orderResponse" doc:id="9c1da7dd-26b6-4e65-940c-168caec44fe3" variableName="orderResponse"/>
+		<flow-ref doc:name="get-orderItem-details-from-sysapi" doc:id="b13e456d-a3b9-4622-bf83-4fbf5357b41c" name="get-orderItem-details-from-sysapi"/>
+		<set-variable value="#[[]]" doc:name="orderItems" doc:id="6fb8a78d-da98-4f97-a674-e7a4610105e3" variableName="orderItems"/>
+		<foreach doc:name="For Each" doc:id="90e00d69-7ac5-4484-b6fc-a16d1eecb740" collection="#[payload]">
+			<set-variable value="#[payload]" doc:name="orderItem" doc:id="1c396797-71fc-4a33-ab29-12bd3733930e" variableName="orderItem"/>
+			<flow-ref doc:name="get-Item-byUriParam-from-sysapi" doc:id="1e9df46e-79c9-4df0-aff5-e86a39a02b2f" name="get-Item-byUriParam-from-sysapi"/>
+			<ee:transform doc:name="Transform Message" doc:id="ee2e002c-a913-4b5e-aa5e-b6df7bae473f" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="orderItems" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.orderItems + {
+	
+	orderItemId: vars.orderItem.orderItemId,
+	itemId: vars.orderItem.itemId,
+	itemCount: vars.orderItem.itemCount,
+	itemName: payload.itemName,
+	itemCost: payload.itemCost
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="a872bd94-2935-4f59-ad8e-813122a1d64c" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+		<ee:transform doc:name="Transform Message" doc:id="b434c520-54a1-449b-9601-2be7d28d5997" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ orderId: vars.orderResponse.orderId,
+ placementDate: vars.orderResponse.placementDate,
+ customerName: vars.orderResponse.customerName,
+ orderItems: vars.orderItems
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	<error-handler ref="implimentationError_Handler" />
+	</flow>
+	<flow name="get-orderItem-details-from-sysapi" doc:id="17bb9543-0fe3-4d00-9170-f98e2e488984" >
+		<logger level="INFO" doc:name="Logger" doc:id="9ed892ac-4aca-4104-bf3c-640cecd4096a" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+		<try doc:name="Try" doc:id="4390bc80-6c61-4c7c-8637-70fb7d580aeb" >
+			<http:request method="GET" doc:name="get order Item system api" config-ref="HTTP_OrderItem_SystemApi_Request_configuration" doc:id="9d003779-2319-4ccb-a044-14463bbd86d1" path="/${secure::systemApi.orderItem.http.path}">
+			<http:headers><![CDATA[#[output applicaton/java
+---
+{
+	'X-correlation-id' : vars.headers.'X-correlation-id',
+	'X-session-id' : vars.headers.'X-session-id',
+	clientId : vars.headers.clientId,
+	clientSecretKey : vars.headers.clientSecretKey
+}]]]></http:headers>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	'order-id' : vars.orderId
+}]]]></http:query-params>
+		</http:request>
+			<set-variable value="true" doc:name="orderItemPresent" doc:id="551fbdb8-b731-4b07-847b-2779f60a9a10" variableName="orderItemPresent"/>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="7e1cae43-863f-457b-a7fd-510e46e36611" when='#[error.muleMessage.payload."error-type" == "ORDERITEM:NOT_FOUND"]'>
+					<set-variable value="false" doc:name="orderItemPresent" doc:id="cdc59e50-f344-448e-872e-d8984d96d601" variableName="orderItemPresent"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="1b697ab1-4d43-4d24-ada3-27d908eff78a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if(vars.orderItemPresent == "true") payload map (orderItem, insexOfOrderItem) ->{
+	orderItemId: orderItem.orderItemId,
+	itemId: orderItem.itemId,
+	itemCount: orderItem.itemCount	
+}
+else []]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="02c6dd98-ee3d-4579-8780-91542ae344d0" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+<error-handler ref="implimentationError_Handler" />
+	</flow>
+	<flow name="get-Item-byUriParam-from-sysapi" doc:id="36395996-384e-4410-84d2-f82c0580d049" >
+		<logger level="INFO" doc:name="Logger" doc:id="bc600836-e069-41e7-844e-ec69acb299a0" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+		<http:request method="GET" doc:name="get Item system api" doc:id="fdbf21f5-1185-4ff7-968c-9db125787d10" config-ref="HTTP_Item_SystemApi_Request_configuration" path="/${secure::systemApi.item.http.path}/{itemId}">
+			<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	'X-correlation-id' : vars.headers.'X-correlation-id',
+	'X-session-id' : vars.headers.'X-session-id',
+	clientId : vars.headers.clientId,
+	clientSecretKey : vars.headers.clientSecretKey
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	itemId : payload.itemId
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="4d611a90-891a-49ee-bfb8-edaed5f56f9c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{itemId: payload.itemId,
+	itemName: payload.itemName,
+	itemCost: payload.itemCost
+	
+	}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="8852542e-d933-4c27-a598-bc26409f9e35" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request received for getting item details based on Item Id&quot;
+}]"/>
+  <error-handler ref="implimentationError_Handler" />
+	</flow>
+	<error-handler name="implimentationError_Handler" doc:id="bed0604d-e51b-4dac-97b6-18ffb1810059" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a1fbfeaa-1cba-4c62-afc3-be47c3357c14" when="error.muleMessage.typedValue != null">
+			<set-variable value="#[error.muleMessage.typedValue.message]" doc:name="errorMessage" doc:id="2b79a657-625d-4671-96dd-ed5b3caa69fb" variableName="errorMessage"/>
+		</on-error-propagate>
+	</error-handler>
+</mule>

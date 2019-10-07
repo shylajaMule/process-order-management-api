@@ -1,0 +1,39 @@
+#%RAML 1.0
+baseUri: https://anypoint.mulesoft.com/mocking/api/v1/links/56d67629-be42-4300-8dfa-790e8413a76d/ # 
+title: process-order-management-api
+mediaType:
+  - application/json
+version: 1.0.0
+protocols:
+  - HTTP
+  
+types:
+  orderResponseType: !include types/orderResponse.raml
+  errorResponse: !include types/errorResponseType.raml
+
+traits: 
+ logging: !include traits/loggingTraits.raml
+ clientId-enforcement: !include traits/security.raml
+ errorTraits: !include traits/errorTraits.raml
+
+/orders/{orderId}:
+  uriParameters:
+    orderId:
+      description: Unique order Id to fetch information
+      example: 1
+      type: number
+      format: int
+  get:
+    displayName: Returns a item details
+    description: get result of item corresponding to itemId
+    is: [logging, clientId-enforcement, errorTraits]
+    responses:
+      200:
+        body:
+          application/json:
+            type: orderResponseType
+            example: !include examples/orderResponse.raml
+     
+              
+  
+
